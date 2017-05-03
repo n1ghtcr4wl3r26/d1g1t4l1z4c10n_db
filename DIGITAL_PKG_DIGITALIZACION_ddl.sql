@@ -1,18 +1,18 @@
 CREATE OR REPLACE 
 PACKAGE pkg_digitalizacion
-/* Formatted on 12/05/2016 20:57:41 (QP5 v5.126) */
+/* Formatted on 3-may.-2017 16:31:14 (QP5 v5.126) */
 IS
     -- RECURSIVIDAD
 
     FUNCTION factorial (num IN NUMBER)
         RETURN NUMBER;
 
-    FUNCTION recorrido (prm_tramite   IN     VARCHAR2,
-                        prm_padre     IN     VARCHAR2,
-                        prm_nodos     IN OUT VARCHAR2,
-                        prm_tabla     IN     VARCHAR2,
-                        prm_limite    IN     NUMBER,
-                        prm_profundidad IN   NUMBER)
+    FUNCTION recorrido (prm_tramite       IN     VARCHAR2,
+                        prm_padre         IN     VARCHAR2,
+                        prm_nodos         IN OUT VARCHAR2,
+                        prm_tabla         IN     VARCHAR2,
+                        prm_limite        IN     NUMBER,
+                        prm_profundidad   IN     NUMBER)
         RETURN VARCHAR2;
 
     FUNCTION recorrido2 (prm_tramite   IN     VARCHAR2,
@@ -25,10 +25,10 @@ IS
                               prm_tabla     IN     VARCHAR2)
         RETURN VARCHAR2;
 
-    FUNCTION recorrido2nivel1 (prm_tramite   IN     VARCHAR2,
+    FUNCTION recorrido2nivel1 (prm_tramite         IN     VARCHAR2,
                                prm_tipodocumento   IN     VARCHAR2,
-                               prm_nodos        OUT VARCHAR2,
-                               prm_tabla     IN     VARCHAR2)
+                               prm_nodos              OUT VARCHAR2,
+                               prm_tabla           IN     VARCHAR2)
         RETURN VARCHAR2;
 
     -- DEVUELVE PARAMETRICAS
@@ -59,7 +59,7 @@ IS
         prm_fechaemision_ini   IN     VARCHAR2,
         prm_fechaemision_fin   IN     VARCHAR2,
         prm_tabla              IN     VARCHAR2,
-        prm_tipofecha              IN     VARCHAR2,
+        prm_tipofecha          IN     VARCHAR2,
         c_resultado               OUT sys_refcursor);
 
     PROCEDURE consulta_por_dui (prm_gestion   IN     VARCHAR2,
@@ -73,8 +73,8 @@ IS
                                     c_resultado      OUT sys_refcursor);
 
     PROCEDURE consulta_por_tramite2 (prm_tramite   IN     VARCHAR2,
-                                    prm_tabla     IN     VARCHAR2,
-                                    c_resultado      OUT sys_refcursor);
+                                     prm_tabla     IN     VARCHAR2,
+                                     c_resultado      OUT sys_refcursor);
 
     -- LOG DEL SISTEMA
 
@@ -102,12 +102,16 @@ IS
 
     FUNCTION pathweb (fecha IN DATE)
         RETURN VARCHAR2;
+
+    PROCEDURE busca_tramite (prm_tramite   IN     VARCHAR2,
+                             prm_tabla     IN     VARCHAR2,
+                             c_resultado      OUT sys_refcursor);
 END;
 /
 
 CREATE OR REPLACE 
 PACKAGE BODY pkg_digitalizacion
-/* Formatted on 1-mar.-2017 11:42:28 (QP5 v5.126) */
+/* Formatted on 3-may.-2017 19:31:37 (QP5 v5.126) */
 IS
     -- RECURSIVIDAD
 
@@ -145,7 +149,7 @@ IS
         THEN
             SELECT   COUNT (1)
               INTO   cont
-              FROM   relacion a
+              FROM   relacion_otro2 a
              WHERE   a.cns_nrotra1 <> a.cns_nrotra2
                      AND ( (a.cns_nrotra1 = prm_tramite
                             AND a.cns_nrotra2 <> prm_padre)
@@ -161,7 +165,7 @@ IS
                                      prm_tramite, a.cns_nrotra2,
                                      a.cns_nrotra1)
                                  relacion
-                      FROM   relacion a
+                      FROM   relacion_otro2 a
                      WHERE   a.cns_nrotra1 <> a.cns_nrotra2
                              AND ( (a.cns_nrotra1 = prm_tramite
                                     AND a.cns_nrotra2 <> prm_padre)
@@ -185,99 +189,6 @@ IS
                 END LOOP;
             END IF;
         END IF;
-
-        IF prm_tabla = 'GENERAL_OTRO'
-        THEN
-            SELECT   COUNT (1)
-              INTO   cont
-              FROM   relacion_otro a
-             WHERE   a.cns_nrotra1 <> a.cns_nrotra2
-                     AND ( (a.cns_nrotra1 = prm_tramite
-                            AND a.cns_nrotra2 <> prm_padre)
-                          OR (a.cns_nrotra2 = prm_tramite
-                              AND a.cns_nrotra1 <> prm_padre));
-
-            IF (cont = 0)
-            THEN
-                res := '';
-            ELSE
-                FOR i
-                IN (SELECT   DECODE (a.cns_nrotra1,
-                                     prm_tramite, a.cns_nrotra2,
-                                     a.cns_nrotra1)
-                                 relacion
-                      FROM   relacion_otro a
-                     WHERE   a.cns_nrotra1 <> a.cns_nrotra2
-                             AND ( (a.cns_nrotra1 = prm_tramite
-                                    AND a.cns_nrotra2 <> prm_padre)
-                                  OR (a.cns_nrotra2 = prm_tramite
-                                      AND a.cns_nrotra1 <> prm_padre)))
-                LOOP
-                    res := res || prm_tramite || '>' || i.relacion || ';';
-
-                    IF (INSTR (prm_nodos, i.relacion) = 0)
-                    THEN
-                        nodos := nodos || i.relacion || ';';
-                        res :=
-                            res
-                            || recorrido (i.relacion,
-                                          prm_tramite,
-                                          nodos,
-                                          prm_tabla,
-                                          prm_limite,
-                                          prm_profundidad + 1);
-                    END IF;
-                END LOOP;
-            END IF;
-        END IF;
-
-
-        IF prm_tabla = 'GENERAL_OTRO1'
-        THEN
-            SELECT   COUNT (1)
-              INTO   cont
-              FROM   relacion_otro1 a
-             WHERE   a.cns_nrotra1 <> a.cns_nrotra2
-                     AND ( (a.cns_nrotra1 = prm_tramite
-                            AND a.cns_nrotra2 <> prm_padre)
-                          OR (a.cns_nrotra2 = prm_tramite
-                              AND a.cns_nrotra1 <> prm_padre));
-
-            IF (cont = 0)
-            THEN
-                res := '';
-            ELSE
-                FOR i
-                IN (SELECT   DECODE (a.cns_nrotra1,
-                                     prm_tramite, a.cns_nrotra2,
-                                     a.cns_nrotra1)
-                                 relacion
-                      FROM   relacion_otro1 a
-                     WHERE   a.cns_nrotra1 <> a.cns_nrotra2
-                             AND ( (a.cns_nrotra1 = prm_tramite
-                                    AND a.cns_nrotra2 <> prm_padre)
-                                  OR (a.cns_nrotra2 = prm_tramite
-                                      AND a.cns_nrotra1 <> prm_padre)))
-                LOOP
-                    res := res || prm_tramite || '>' || i.relacion || ';';
-
-                    IF (INSTR (prm_nodos, i.relacion) = 0)
-                    THEN
-                        nodos := nodos || i.relacion || ';';
-                        res :=
-                            res
-                            || recorrido (i.relacion,
-                                          prm_tramite,
-                                          nodos,
-                                          prm_tabla,
-                                          prm_limite,
-                                          prm_profundidad + 1);
-                    END IF;
-                END LOOP;
-            END IF;
-        END IF;
-
-
 
         prm_nodos := nodos;
         RETURN res;
@@ -324,71 +235,6 @@ IS
         THEN
             SELECT   COUNT (1)
               INTO   cont
-              FROM   relacion a
-             WHERE   a.cns_nrotra1 <> a.cns_nrotra2
-                     AND (a.cns_nrotra1 = prm_tramite
-                          OR a.cns_nrotra2 = prm_tramite);
-
-
-            IF (cont = 0)
-            THEN
-                res := '';
-            ELSE
-                FOR i
-                IN (SELECT   DECODE (a.cns_nrotra1,
-                                     prm_tramite, a.cns_nrotra2,
-                                     a.cns_nrotra1)
-                                 relacion
-                      FROM   relacion a
-                     WHERE   a.cns_nrotra1 <> a.cns_nrotra2
-                             AND (a.cns_nrotra1 = prm_tramite
-                                  OR a.cns_nrotra2 = prm_tramite))
-                LOOP
-                    res := res || prm_tramite || '>' || i.relacion || ';';
-
-                    nodos := nodos || i.relacion || ';';
-                END LOOP;
-            END IF;
-        END IF;
-
-
-        IF prm_tabla = 'GENERAL_OTRO'
-        THEN
-            SELECT   COUNT (1)
-              INTO   cont
-              FROM   relacion_otro a
-             WHERE   a.cns_nrotra1 <> a.cns_nrotra2
-                     AND (a.cns_nrotra1 = prm_tramite
-                          OR a.cns_nrotra2 = prm_tramite);
-
-
-            IF (cont = 0)
-            THEN
-                res := '';
-            ELSE
-                FOR i
-                IN (SELECT   DECODE (a.cns_nrotra1,
-                                     prm_tramite, a.cns_nrotra2,
-                                     a.cns_nrotra1)
-                                 relacion
-                      FROM   relacion_otro a
-                     WHERE   a.cns_nrotra1 <> a.cns_nrotra2
-                             AND (a.cns_nrotra1 = prm_tramite
-                                  OR a.cns_nrotra2 = prm_tramite))
-                LOOP
-                    res := res || prm_tramite || '>' || i.relacion || ';';
-
-                    nodos := nodos || i.relacion || ';';
-                END LOOP;
-            END IF;
-        END IF;
-
-
-
-        IF prm_tabla = 'GENERAL_OTRO1'
-        THEN
-            SELECT   COUNT (1)
-              INTO   cont
               FROM   relacion_otro2 a
              WHERE   a.cns_nrotra1 <> a.cns_nrotra2
                      AND (a.cns_nrotra1 = prm_tramite
@@ -420,27 +266,37 @@ IS
         RETURN res;
     END recorridonivel1;
 
-    FUNCTION recorrido2nivel1 (prm_tramite   IN     VARCHAR2,
+    FUNCTION recorrido2nivel1 (prm_tramite         IN     VARCHAR2,
                                prm_tipodocumento   IN     VARCHAR2,
-                               prm_nodos        OUT VARCHAR2,
-                               prm_tabla     IN     VARCHAR2)
+                               prm_nodos              OUT VARCHAR2,
+                               prm_tabla           IN     VARCHAR2)
         RETURN VARCHAR2
     IS
         res     VARCHAR2 (30000) := '';
         nodos   VARCHAR2 (30000) := '';
         cont    NUMBER;
     BEGIN
-        nodos := prm_tramite ||'*'|| prm_tipodocumento|| ';';
+        nodos := prm_tramite || '*' || prm_tipodocumento || ';';
 
-        IF prm_tabla = 'GENERAL'
+        IF    prm_tipodocumento = '960'
+           OR prm_tipodocumento = '932'
+           OR prm_tipodocumento = 'B74'
         THEN
             SELECT   COUNT (1)
               INTO   cont
-              FROM   relacion a
-             WHERE   a.cns_nrotra1||'*'||a.cns_tipodoc1 <> a.cns_nrotra2 ||'*'||a.cns_tipodoc2
-                     AND ((a.cns_nrotra1 = prm_tramite and a.cns_tipodoc1 = prm_tipodocumento)
-                          OR (a.cns_nrotra2 = prm_tramite and a.cns_tipodoc2 = prm_tipodocumento));
-
+              FROM   relacion_otro2 a
+             WHERE   a.cns_nrotra1 || '*' || a.cns_tipodoc1 <>
+                         a.cns_nrotra2 || '*' || a.cns_tipodoc2
+                     AND ( (SUBSTR (a.cns_nrotra1, 0, 7) =
+                                SUBSTR (prm_tramite, 0, 7)
+                            AND TRIM ('0' FROM SUBSTR (a.cns_nrotra1, 9)) =
+                                   TRIM ('0' FROM SUBSTR (prm_tramite, 9))
+                            AND a.cns_tipodoc1 = prm_tipodocumento)
+                          OR (SUBSTR (a.cns_nrotra2, 0, 7) =
+                                  SUBSTR (prm_tramite, 0, 7)
+                              AND TRIM ('0' FROM SUBSTR (a.cns_nrotra2, 9)) =
+                                     TRIM ('0' FROM SUBSTR (prm_tramite, 9))
+                              AND a.cns_tipodoc2 = prm_tipodocumento));
 
             IF (cont = 0)
             THEN
@@ -448,87 +304,161 @@ IS
             ELSE
                 FOR i
                 IN (SELECT   DECODE (a.cns_nrotra1,
-                                     prm_tramite, a.cns_nrotra2||'*'||a.cns_tipodoc2,
-                                     a.cns_nrotra1||'*'||a.cns_tipodoc1)
+                                     prm_tramite,
+                                     a.cns_nrotra2 || '*' || a.cns_tipodoc2,
+                                     a.cns_nrotra1 || '*' || a.cns_tipodoc1)
                                  relacion
-                      FROM   relacion a
-                     WHERE   a.cns_nrotra1||'*'||a.cns_tipodoc1 <> a.cns_nrotra2 ||'*'||a.cns_tipodoc2
-                     AND ((a.cns_nrotra1 = prm_tramite and a.cns_tipodoc1 = prm_tipodocumento)
-                          OR (a.cns_nrotra2 = prm_tramite and a.cns_tipodoc2 = prm_tipodocumento)))
+                      FROM   relacion_otro2 a
+                     WHERE   a.cns_nrotra1 || '*' || a.cns_tipodoc1 <>
+                                 a.cns_nrotra2 || '*' || a.cns_tipodoc2
+                             AND ( (SUBSTR (a.cns_nrotra1, 0, 7) =
+                                        SUBSTR (prm_tramite, 0, 7)
+                                    AND TRIM (
+                                           '0' FROM SUBSTR (a.cns_nrotra1, 9)) =
+                                           TRIM (
+                                               '0' FROM SUBSTR (prm_tramite,
+                                                                9))
+                                    AND a.cns_tipodoc1 = prm_tipodocumento)
+                                  OR (SUBSTR (a.cns_nrotra2, 0, 7) =
+                                          SUBSTR (prm_tramite, 0, 7)
+                                      AND TRIM (
+                                             '0' FROM SUBSTR (a.cns_nrotra2,
+                                                              9)) =
+                                             TRIM (
+                                                 '0' FROM SUBSTR (
+                                                              prm_tramite,
+                                                              9))
+                                      AND a.cns_tipodoc2 = prm_tipodocumento)))
                 LOOP
-                    res := res || prm_tramite ||'*'|| prm_tipodocumento || '>' || i.relacion || ';';
+                    res :=
+                           res
+                        || prm_tramite
+                        || '*'
+                        || prm_tipodocumento
+                        || '>'
+                        || i.relacion
+                        || ';';
 
                     nodos := nodos || i.relacion || ';';
                 END LOOP;
             END IF;
-        END IF;
-
-
-        IF prm_tabla = 'GENERAL_OTRO'
-        THEN
-            SELECT   COUNT (1)
-              INTO   cont
-              FROM   relacion_otro a
-             WHERE   a.cns_nrotra1||'*'||a.cns_tipodoc1 <> a.cns_nrotra2 ||'*'||a.cns_tipodoc2
-                     AND ((a.cns_nrotra1 = prm_tramite and a.cns_tipodoc1 = prm_tipodocumento)
-                          OR (a.cns_nrotra2 = prm_tramite and a.cns_tipodoc2 = prm_tipodocumento));
-
-
-            IF (cont = 0)
+        ELSE
+            IF prm_tipodocumento = '785'
             THEN
-                res := '';
-            ELSE
-                FOR i
-                IN (SELECT   DECODE (a.cns_nrotra1,
-                                     prm_tramite, a.cns_nrotra2||'*'||a.cns_tipodoc2,
-                                     a.cns_nrotra1||'*'||a.cns_tipodoc1)
-                                 relacion
-                      FROM   relacion_otro a
-                     WHERE   a.cns_nrotra1||'*'||a.cns_tipodoc1 <> a.cns_nrotra2 ||'*'||a.cns_tipodoc2
-                     AND ((a.cns_nrotra1 = prm_tramite and a.cns_tipodoc1 = prm_tipodocumento)
-                          OR (a.cns_nrotra2 = prm_tramite and a.cns_tipodoc2 = prm_tipodocumento)))
-                LOOP
-                    res := res || prm_tramite ||'*'|| prm_tipodocumento || '>' || i.relacion || ';';
+                SELECT   COUNT (1)
+                  INTO   cont
+                  FROM   relacion_otro2 a
+                 WHERE   a.cns_nrotra1 || '*' || a.cns_tipodoc1 <>
+                             a.cns_nrotra2 || '*' || a.cns_tipodoc2
+                         AND ( (SUBSTR (a.cns_nrotra1, 0, 7) =
+                                    SUBSTR (prm_tramite, 0, 7)
+                                AND TRIM ('0' FROM SUBSTR (a.cns_nrotra1, 8)) =
+                                       TRIM (
+                                           '0' FROM SUBSTR (prm_tramite, 8))
+                                AND a.cns_tipodoc1 = prm_tipodocumento)
+                              OR (SUBSTR (a.cns_nrotra2, 0, 7) =
+                                      SUBSTR (prm_tramite, 0, 7)
+                                  AND TRIM (
+                                         '0' FROM SUBSTR (a.cns_nrotra2, 8)) =
+                                         TRIM (
+                                             '0' FROM SUBSTR (prm_tramite, 8))
+                                  AND a.cns_tipodoc2 = prm_tipodocumento));
 
-                    nodos := nodos || i.relacion || ';';
-                END LOOP;
+                IF (cont = 0)
+                THEN
+                    res := '';
+                ELSE
+                    FOR i
+                    IN (SELECT   DECODE (
+                                     a.cns_nrotra1,
+                                     prm_tramite,
+                                     a.cns_nrotra2 || '*' || a.cns_tipodoc2,
+                                     a.cns_nrotra1 || '*' || a.cns_tipodoc1)
+                                     relacion
+                          FROM   relacion_otro2 a
+                         WHERE   a.cns_nrotra1 || '*' || a.cns_tipodoc1 <>
+                                     a.cns_nrotra2 || '*' || a.cns_tipodoc2
+                                 AND ( (SUBSTR (a.cns_nrotra1, 0, 7) =
+                                            SUBSTR (prm_tramite, 0, 7)
+                                        AND TRIM (
+                                               '0' FROM SUBSTR (
+                                                            a.cns_nrotra1,
+                                                            8)) =
+                                               TRIM (
+                                                   '0' FROM SUBSTR (
+                                                                prm_tramite,
+                                                                8))
+                                        AND a.cns_tipodoc1 =
+                                               prm_tipodocumento)
+                                      OR (SUBSTR (a.cns_nrotra2, 0, 7) =
+                                              SUBSTR (prm_tramite, 0, 7)
+                                          AND TRIM (
+                                                 '0' FROM SUBSTR (
+                                                              a.cns_nrotra2,
+                                                              8)) =
+                                                 TRIM (
+                                                     '0' FROM SUBSTR (
+                                                                  prm_tramite,
+                                                                  8))
+                                          AND a.cns_tipodoc2 =
+                                                 prm_tipodocumento)))
+                    LOOP
+                        res :=
+                               res
+                            || prm_tramite
+                            || '*'
+                            || prm_tipodocumento
+                            || '>'
+                            || i.relacion
+                            || ';';
+
+                        nodos := nodos || i.relacion || ';';
+                    END LOOP;
+                END IF;
+            ELSE
+                SELECT   COUNT (1)
+                  INTO   cont
+                  FROM   relacion_otro2 a
+                 WHERE   a.cns_nrotra1 || '*' || a.cns_tipodoc1 <>
+                             a.cns_nrotra2 || '*' || a.cns_tipodoc2
+                         AND (a.cns_nrotra1 = prm_tramite
+                              AND a.cns_tipodoc1 = prm_tipodocumento)
+                         OR (a.cns_nrotra2 = prm_tramite
+                             AND a.cns_tipodoc2 = prm_tipodocumento);
+
+                IF (cont = 0)
+                THEN
+                    res := '';
+                ELSE
+                    FOR i
+                    IN (SELECT   DECODE (
+                                     a.cns_nrotra1,
+                                     prm_tramite,
+                                     a.cns_nrotra2 || '*' || a.cns_tipodoc2,
+                                     a.cns_nrotra1 || '*' || a.cns_tipodoc1)
+                                     relacion
+                          FROM   relacion_otro2 a
+                         WHERE   a.cns_nrotra1 || '*' || a.cns_tipodoc1 <>
+                                     a.cns_nrotra2 || '*' || a.cns_tipodoc2
+                                 AND (a.cns_nrotra1 = prm_tramite
+                                      AND a.cns_tipodoc1 = prm_tipodocumento)
+                                 OR (a.cns_nrotra2 = prm_tramite
+                                     AND a.cns_tipodoc2 = prm_tipodocumento))
+                    LOOP
+                        res :=
+                               res
+                            || prm_tramite
+                            || '*'
+                            || prm_tipodocumento
+                            || '>'
+                            || i.relacion
+                            || ';';
+
+                        nodos := nodos || i.relacion || ';';
+                    END LOOP;
+                END IF;
             END IF;
         END IF;
-
-
-
-        IF prm_tabla = 'GENERAL_OTRO1'
-        THEN
-            SELECT   COUNT (1)
-              INTO   cont
-              FROM   relacion_otro1 a
-             WHERE   a.cns_nrotra1||'*'||a.cns_tipodoc1 <> a.cns_nrotra2 ||'*'||a.cns_tipodoc2
-                     AND ((a.cns_nrotra1 = prm_tramite and a.cns_tipodoc1 = prm_tipodocumento)
-                          OR (a.cns_nrotra2 = prm_tramite and a.cns_tipodoc2 = prm_tipodocumento));
-
-
-            IF (cont = 0)
-            THEN
-                res := '';
-            ELSE
-                FOR i
-                IN (SELECT   DECODE (a.cns_nrotra1,
-                                     prm_tramite, a.cns_nrotra2||'*'||a.cns_tipodoc2,
-                                     a.cns_nrotra1||'*'||a.cns_tipodoc1)
-                                 relacion
-                      FROM   relacion_otro1 a
-                     WHERE   a.cns_nrotra1||'*'||a.cns_tipodoc1 <> a.cns_nrotra2 ||'*'||a.cns_tipodoc2
-                     AND ((a.cns_nrotra1 = prm_tramite and a.cns_tipodoc1 = prm_tipodocumento)
-                          OR (a.cns_nrotra2 = prm_tramite and a.cns_tipodoc2 = prm_tipodocumento)))
-                LOOP
-                    --res := res || prm_tramite ||'*'|| prm_tipodocumento || '>' || i.relacion || ';';
-
-                    nodos := nodos || i.relacion || ';';
-                END LOOP;
-            END IF;
-        END IF;
-
-
 
         prm_nodos := nodos;
         RETURN res;
@@ -547,7 +477,7 @@ IS
                        a.key_tip || ':' || a.dsc_tip dsc_tip,
                        a.lst_ope,
                        a.nit_emi
-                FROM   untipdoc a
+                FROM   digital.untipdoc a
                WHERE   a.lst_ope LIKE prm_lstope AND a.nit_emi LIKE prm_nit_emi
             ORDER BY   a.key_tip;
     END;
@@ -594,89 +524,8 @@ IS
                            TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
                                cns_fecha_pro,
                            b.cns_estado,
-                           b.cns_usuario,
-                           TO_CHAR (b.cns_fechasys, 'dd/mm/yyyy hh24:mi')
-                               cns_fechasys
-                    FROM   general b,
-                           untipdoc t,
-                           ops$asy.uncuotab@basy.sidunealin u
-                   WHERE       b.cns_tipodoc = t.key_tip
-                           AND b.cns_adutra = u.cuo_cod(+)
-                           AND u.lst_ope(+) = 'U'
-                           AND t.lst_ope = 'U'
-                           --AND b.cns_codconc LIKE prm_codconsignatario
-                           AND b.cns_tipodoc LIKE prm_tipodocumento
-                           --AND b.cns_emisor LIKE prm_emisor
-                           AND b.cns_adutra LIKE prm_aduana
-                           AND b.cns_fecha_emi BETWEEN TO_DATE (
-                                                           prm_fechaemision_ini,
-                                                           'dd/mm/yyyy')
-                                                   AND  TO_DATE (
-                                                            prm_fechaemision_fin,
-                                                            'dd/mm/yyyy')
-                ORDER BY   b.cns_nrotra, t.dsc_tip;
-        END IF;
-
-        IF prm_tabla = 'GENERAL_OTRO'
-        THEN
-            OPEN c_resultado FOR
-                  SELECT   b.cns_codconc,
-                           b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                           b.cns_nrotra,
-                           b.cns_tipodoc,
-                           b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                           b.cns_emisor,
-                           pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                           || b.cns_nomarch
-                               PATH,
-                           b.cns_nomarch,
-                           TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                               cns_fecha_emi,
-                           TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                               cns_fecha_pro,
-                           b.cns_estado,
                            '-' cns_usuario,
-                           '-' cns_fechasys
-                    FROM   general_otro b,
-                           untipdoc t,
-                           ops$asy.uncuotab@basy.sidunealin u
-                   WHERE       b.cns_tipodoc = t.key_tip
-                           AND b.cns_adutra = u.cuo_cod(+)
-                           AND u.lst_ope(+) = 'U'
-                           AND t.lst_ope = 'U'
-                           --AND b.cns_codconc LIKE prm_codconsignatario
-                           AND b.cns_tipodoc LIKE prm_tipodocumento
-                           --AND b.cns_emisor LIKE prm_emisor
-                           AND b.cns_adutra LIKE prm_aduana
-                           AND b.cns_fecha_emi BETWEEN TO_DATE (
-                                                           prm_fechaemision_ini,
-                                                           'dd/mm/yyyy')
-                                                   AND  TO_DATE (
-                                                            prm_fechaemision_fin,
-                                                            'dd/mm/yyyy')
-                ORDER BY   b.cns_nrotra, t.dsc_tip;
-        END IF;
-
-        IF prm_tabla = 'GENERAL_OTRO1'
-        THEN
-            OPEN c_resultado FOR
-                  SELECT   b.cns_codconc,
-                           b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                           b.cns_nrotra,
-                           b.cns_tipodoc,
-                           b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                           b.cns_emisor,
-                           pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                           || b.cns_nomarch
-                               PATH,
-                           b.cns_nomarch,
-                           TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                               cns_fecha_emi,
-                           TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                               cns_fecha_pro,
-                           b.cns_estado,
-                           '-' cns_usuario,
-                           '-' cns_fechasys
+                           TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi') cns_fechasys
                     FROM   general_otro1 b,
                            untipdoc t,
                            ops$asy.uncuotab@basy.sidunealin u
@@ -730,89 +579,9 @@ IS
                                TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
                                    cns_fecha_pro,
                                b.cns_estado,
-                               b.cns_usuario,
-                               TO_CHAR (b.cns_fechasys, 'dd/mm/yyyy hh24:mi')
+                               '-' cns_usuario,
+                               TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi')
                                    cns_fechasys
-                        FROM   general b,
-                               untipdoc t,
-                               ops$asy.uncuotab@basy.sidunealin u
-                       WHERE       b.cns_tipodoc = t.key_tip
-                               AND b.cns_adutra = u.cuo_cod(+)
-                               AND u.lst_ope(+) = 'U'
-                               AND t.lst_ope = 'U'
-                               --AND b.cns_codconc LIKE prm_codconsignatario
-                               AND b.cns_tipodoc LIKE prm_tipodocumento
-                               --AND b.cns_emisor LIKE prm_emisor
-                               AND b.cns_adutra LIKE prm_aduana
-                               AND b.cns_fecha_emi BETWEEN TO_DATE (
-                                                               prm_fechaemision_ini,
-                                                               'dd/mm/yyyy')
-                                                       AND  TO_DATE (
-                                                                prm_fechaemision_fin,
-                                                                'dd/mm/yyyy')
-                    ORDER BY   b.cns_nrotra, t.dsc_tip;
-            END IF;
-
-            IF prm_tabla = 'GENERAL_OTRO'
-            THEN
-                OPEN c_resultado FOR
-                      SELECT   b.cns_codconc,
-                               b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                               b.cns_nrotra,
-                               b.cns_tipodoc,
-                               b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                               b.cns_emisor,
-                               pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                               || b.cns_nomarch
-                                   PATH,
-                               b.cns_nomarch,
-                               TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                                   cns_fecha_emi,
-                               TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                                   cns_fecha_pro,
-                               b.cns_estado,
-                               '-' cns_usuario,
-                               '-' cns_fechasys
-                        FROM   general_otro b,
-                               untipdoc t,
-                               ops$asy.uncuotab@basy.sidunealin u
-                       WHERE       b.cns_tipodoc = t.key_tip
-                               AND b.cns_adutra = u.cuo_cod(+)
-                               AND u.lst_ope(+) = 'U'
-                               AND t.lst_ope = 'U'
-                               --AND b.cns_codconc LIKE prm_codconsignatario
-                               AND b.cns_tipodoc LIKE prm_tipodocumento
-                               --AND b.cns_emisor LIKE prm_emisor
-                               AND b.cns_adutra LIKE prm_aduana
-                               AND b.cns_fecha_emi BETWEEN TO_DATE (
-                                                               prm_fechaemision_ini,
-                                                               'dd/mm/yyyy')
-                                                       AND  TO_DATE (
-                                                                prm_fechaemision_fin,
-                                                                'dd/mm/yyyy')
-                    ORDER BY   b.cns_nrotra, t.dsc_tip;
-            END IF;
-
-            IF prm_tabla = 'GENERAL_OTRO1'
-            THEN
-                OPEN c_resultado FOR
-                      SELECT   b.cns_codconc,
-                               b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                               b.cns_nrotra,
-                               b.cns_tipodoc,
-                               b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                               b.cns_emisor,
-                               pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                               || b.cns_nomarch
-                                   PATH,
-                               b.cns_nomarch,
-                               TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                                   cns_fecha_emi,
-                               TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                                   cns_fecha_pro,
-                               b.cns_estado,
-                               '-' cns_usuario,
-                               '-' cns_fechasys
                         FROM   general_otro1 b,
                                untipdoc t,
                                ops$asy.uncuotab@basy.sidunealin u
@@ -854,89 +623,9 @@ IS
                                TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
                                    cns_fecha_pro,
                                b.cns_estado,
-                               b.cns_usuario,
-                               TO_CHAR (b.cns_fechasys, 'dd/mm/yyyy hh24:mi')
+                               '-' cns_usuario,
+                               TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi')
                                    cns_fechasys
-                        FROM   general b,
-                               untipdoc t,
-                               ops$asy.uncuotab@basy.sidunealin u
-                       WHERE       b.cns_tipodoc = t.key_tip
-                               AND b.cns_adutra = u.cuo_cod(+)
-                               AND u.lst_ope(+) = 'U'
-                               AND t.lst_ope = 'U'
-                               --AND b.cns_codconc LIKE prm_codconsignatario
-                               AND b.cns_tipodoc LIKE prm_tipodocumento
-                               --AND b.cns_emisor LIKE prm_emisor
-                               AND b.cns_adutra LIKE prm_aduana
-                               AND b.cns_fecha_pro BETWEEN TO_DATE (
-                                                               prm_fechaemision_ini,
-                                                               'dd/mm/yyyy')
-                                                       AND  TO_DATE (
-                                                                prm_fechaemision_fin,
-                                                                'dd/mm/yyyy')
-                    ORDER BY   b.cns_nrotra, t.dsc_tip;
-            END IF;
-
-            IF prm_tabla = 'GENERAL_OTRO'
-            THEN
-                OPEN c_resultado FOR
-                      SELECT   b.cns_codconc,
-                               b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                               b.cns_nrotra,
-                               b.cns_tipodoc,
-                               b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                               b.cns_emisor,
-                               pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                               || b.cns_nomarch
-                                   PATH,
-                               b.cns_nomarch,
-                               TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                                   cns_fecha_emi,
-                               TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                                   cns_fecha_pro,
-                               b.cns_estado,
-                               '-' cns_usuario,
-                               '-' cns_fechasys
-                        FROM   general_otro b,
-                               untipdoc t,
-                               ops$asy.uncuotab@basy.sidunealin u
-                       WHERE       b.cns_tipodoc = t.key_tip
-                               AND b.cns_adutra = u.cuo_cod(+)
-                               AND u.lst_ope(+) = 'U'
-                               AND t.lst_ope = 'U'
-                               --AND b.cns_codconc LIKE prm_codconsignatario
-                               AND b.cns_tipodoc LIKE prm_tipodocumento
-                               --AND b.cns_emisor LIKE prm_emisor
-                               AND b.cns_adutra LIKE prm_aduana
-                               AND b.cns_fecha_pro BETWEEN TO_DATE (
-                                                               prm_fechaemision_ini,
-                                                               'dd/mm/yyyy')
-                                                       AND  TO_DATE (
-                                                                prm_fechaemision_fin,
-                                                                'dd/mm/yyyy')
-                    ORDER BY   b.cns_nrotra, t.dsc_tip;
-            END IF;
-
-            IF prm_tabla = 'GENERAL_OTRO1'
-            THEN
-                OPEN c_resultado FOR
-                      SELECT   b.cns_codconc,
-                               b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                               b.cns_nrotra,
-                               b.cns_tipodoc,
-                               b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                               b.cns_emisor,
-                               pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                               || b.cns_nomarch
-                                   PATH,
-                               b.cns_nomarch,
-                               TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                                   cns_fecha_emi,
-                               TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                                   cns_fecha_pro,
-                               b.cns_estado,
-                               '-' cns_usuario,
-                               '-' cns_fechasys
                         FROM   general_otro1 b,
                                untipdoc t,
                                ops$asy.uncuotab@basy.sidunealin u
@@ -984,81 +673,8 @@ IS
                            TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
                                cns_fecha_pro,
                            b.cns_estado,
-                           b.cns_usuario,
-                           TO_CHAR (b.cns_fechasys, 'dd/mm/yyyy hh24:mi')
-                               cns_fechasys
-                    FROM   general b,
-                           untipdoc t,
-                           ops$asy.uncuotab@basy.sidunealin u
-                   WHERE       b.cns_tipodoc = t.key_tip
-                           AND b.cns_adutra = u.cuo_cod(+)
-                           AND u.lst_ope(+) = 'U'
-                           AND t.lst_ope = 'U'
-                           AND b.cns_nrotra =
-                                     prm_gestion
-                                  || ' '
-                                  || prm_aduana
-                                  || ' C '
-                                  || pkg_digitalizacion.ceros (prm_numero)
-                ORDER BY   b.cns_nrotra, t.dsc_tip;
-        END IF;
-
-        IF prm_tabla = 'GENERAL_OTRO'
-        THEN
-            OPEN c_resultado FOR
-                  SELECT   b.cns_codconc,
-                           b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                           b.cns_nrotra,
-                           b.cns_tipodoc,
-                           b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                           b.cns_emisor,
-                           pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                           || b.cns_nomarch
-                               PATH,
-                           b.cns_nomarch,
-                           TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                               cns_fecha_emi,
-                           TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                               cns_fecha_pro,
-                           b.cns_estado,
                            '-' cns_usuario,
-                           '-' cns_fechasys
-                    FROM   general_otro b,
-                           untipdoc t,
-                           ops$asy.uncuotab@basy.sidunealin u
-                   WHERE       b.cns_tipodoc = t.key_tip
-                           AND b.cns_adutra = u.cuo_cod(+)
-                           AND u.lst_ope(+) = 'U'
-                           AND t.lst_ope = 'U'
-                           AND b.cns_nrotra =
-                                     prm_gestion
-                                  || ' '
-                                  || prm_aduana
-                                  || ' C '
-                                  || pkg_digitalizacion.ceros (prm_numero)
-                ORDER BY   b.cns_nrotra, t.dsc_tip;
-        END IF;
-
-        IF prm_tabla = 'GENERAL_OTRO1'
-        THEN
-            OPEN c_resultado FOR
-                  SELECT   b.cns_codconc,
-                           b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                           b.cns_nrotra,
-                           b.cns_tipodoc,
-                           b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                           b.cns_emisor,
-                           pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                           || b.cns_nomarch
-                               PATH,
-                           b.cns_nomarch,
-                           TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                               cns_fecha_emi,
-                           TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                               cns_fecha_pro,
-                           b.cns_estado,
-                           '-' cns_usuario,
-                           '-' cns_fechasys
+                           TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi') cns_fechasys
                     FROM   general_otro1 b,
                            untipdoc t,
                            ops$asy.uncuotab@basy.sidunealin u
@@ -1100,71 +716,8 @@ IS
                            TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
                                cns_fecha_pro,
                            b.cns_estado,
-                           b.cns_usuario,
-                           TO_CHAR (b.cns_fechasys, 'dd/mm/yyyy hh24:mi')
-                               cns_fechasys
-                    FROM   general b,
-                           untipdoc t,
-                           ops$asy.uncuotab@basy.sidunealin u
-                   WHERE       b.cns_tipodoc = t.key_tip
-                           AND b.cns_adutra = u.cuo_cod(+)
-                           AND u.lst_ope(+) = 'U'
-                           AND t.lst_ope = 'U'
-                           AND b.cns_nrotra = prm_tramite
-                ORDER BY   b.cns_nrotra, t.dsc_tip;
-        END IF;
-
-        IF prm_tabla = 'GENERAL_OTRO'
-        THEN
-            OPEN c_resultado FOR
-                  SELECT   b.cns_codconc,
-                           b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                           b.cns_nrotra,
-                           b.cns_tipodoc,
-                           b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                           b.cns_emisor,
-                           pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                           || b.cns_nomarch
-                               PATH,
-                           b.cns_nomarch,
-                           TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                               cns_fecha_emi,
-                           TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                               cns_fecha_pro,
-                           b.cns_estado,
                            '-' cns_usuario,
-                           '-' cns_fechasys
-                    FROM   general_otro b,
-                           untipdoc t,
-                           ops$asy.uncuotab@basy.sidunealin u
-                   WHERE       b.cns_tipodoc = t.key_tip
-                           AND b.cns_adutra = u.cuo_cod(+)
-                           AND u.lst_ope(+) = 'U'
-                           AND t.lst_ope = 'U'
-                           AND b.cns_nrotra = prm_tramite
-                ORDER BY   b.cns_nrotra, t.dsc_tip;
-        END IF;
-
-        IF prm_tabla = 'GENERAL_OTRO1'
-        THEN
-            OPEN c_resultado FOR
-                  SELECT   b.cns_codconc,
-                           b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                           b.cns_nrotra,
-                           b.cns_tipodoc,
-                           b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                           b.cns_emisor,
-                           pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                           || b.cns_nomarch
-                               PATH,
-                           b.cns_nomarch,
-                           TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                               cns_fecha_emi,
-                           TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                               cns_fecha_pro,
-                           b.cns_estado,
-                           '-' cns_usuario,
-                           '-' cns_fechasys
+                           TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi') cns_fechasys
                     FROM   general_otro1 b,
                            untipdoc t,
                            ops$asy.uncuotab@basy.sidunealin u
@@ -1178,16 +731,14 @@ IS
     END;
 
     PROCEDURE consulta_por_tramite2 (prm_tramite   IN     VARCHAR2,
-                                    prm_tabla     IN     VARCHAR2,
-                                    c_resultado      OUT sys_refcursor)
+                                     prm_tabla     IN     VARCHAR2,
+                                     c_resultado      OUT sys_refcursor)
     IS
-
-    vtramite varchar2(30);
-    vtipo varchar2(20);
+        vtramite   VARCHAR2 (30);
+        vtipo      VARCHAR2 (20);
     BEGIN
-
-        vtramite := substr(prm_tramite,0,instr(prm_tramite,'*') -1);
-        vtipo := substr(prm_tramite,instr(prm_tramite,'*') +1);
+        vtramite := SUBSTR (prm_tramite, 0, INSTR (prm_tramite, '*') - 1);
+        vtipo := SUBSTR (prm_tramite, INSTR (prm_tramite, '*') + 1);
 
         IF prm_tabla = 'GENERAL'
         THEN
@@ -1207,73 +758,8 @@ IS
                            TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
                                cns_fecha_pro,
                            b.cns_estado,
-                           b.cns_usuario,
-                           TO_CHAR (b.cns_fechasys, 'dd/mm/yyyy hh24:mi')
-                               cns_fechasys
-                    FROM   general b,
-                           untipdoc t,
-                           ops$asy.uncuotab@basy.sidunealin u
-                   WHERE       b.cns_tipodoc = t.key_tip
-                           AND b.cns_adutra = u.cuo_cod(+)
-                           AND u.lst_ope(+) = 'U'
-                           AND t.lst_ope = 'U'
-                           AND b.cns_nrotra = vtramite
-                           and b.cns_tipodoc = vtipo
-                ORDER BY   b.cns_nrotra, t.dsc_tip;
-        END IF;
-
-        IF prm_tabla = 'GENERAL_OTRO'
-        THEN
-            OPEN c_resultado FOR
-                  SELECT   b.cns_codconc,
-                           b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                           b.cns_nrotra,
-                           b.cns_tipodoc,
-                           b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                           b.cns_emisor,
-                           pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                           || b.cns_nomarch
-                               PATH,
-                           b.cns_nomarch,
-                           TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                               cns_fecha_emi,
-                           TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                               cns_fecha_pro,
-                           b.cns_estado,
                            '-' cns_usuario,
-                           '-' cns_fechasys
-                    FROM   general_otro b,
-                           untipdoc t,
-                           ops$asy.uncuotab@basy.sidunealin u
-                   WHERE       b.cns_tipodoc = t.key_tip
-                           AND b.cns_adutra = u.cuo_cod(+)
-                           AND u.lst_ope(+) = 'U'
-                           AND t.lst_ope = 'U'
-                           AND b.cns_nrotra = vtramite
-                           and b.cns_tipodoc = vtipo
-                ORDER BY   b.cns_nrotra, t.dsc_tip;
-        END IF;
-
-        IF prm_tabla = 'GENERAL_OTRO1'
-        THEN
-            OPEN c_resultado FOR
-                  SELECT   b.cns_codconc,
-                           b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                           b.cns_nrotra,
-                           b.cns_tipodoc,
-                           b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
-                           b.cns_emisor,
-                           pkg_digitalizacion.pathweb (b.cns_fecha_pro)
-                           || b.cns_nomarch
-                               PATH,
-                           b.cns_nomarch,
-                           TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
-                               cns_fecha_emi,
-                           TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
-                               cns_fecha_pro,
-                           b.cns_estado,
-                           '-' cns_usuario,
-                           '-' cns_fechasys
+                           TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi') cns_fechasys
                     FROM   general_otro1 b,
                            untipdoc t,
                            ops$asy.uncuotab@basy.sidunealin u
@@ -1282,8 +768,121 @@ IS
                            AND u.lst_ope(+) = 'U'
                            AND t.lst_ope = 'U'
                            AND b.cns_nrotra = vtramite
-                           and b.cns_tipodoc = vtipo
+                           AND b.cns_tipodoc = vtipo
                 ORDER BY   b.cns_nrotra, t.dsc_tip;
+        END IF;
+    END;
+
+
+    PROCEDURE busca_tramite (prm_tramite   IN     VARCHAR2,
+                             prm_tabla     IN     VARCHAR2,
+                             c_resultado      OUT sys_refcursor)
+    IS
+        vtramite   VARCHAR2 (30);
+        vtipo      VARCHAR2 (20);
+    BEGIN
+        vtramite := SUBSTR (prm_tramite, 0, INSTR (prm_tramite, '*') - 1);
+        vtipo := SUBSTR (prm_tramite, INSTR (prm_tramite, '*') + 1);
+
+        IF vtipo = '960' OR vtipo = '932' OR vtipo = 'B74'
+        THEN
+            OPEN c_resultado FOR
+                  SELECT   b.cns_codconc,
+                           b.cns_adutra || ':' || u.cuo_nam cns_adutra,
+                           b.cns_nrotra,
+                           b.cns_tipodoc,
+                           b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
+                           b.cns_emisor,
+                           pkg_digitalizacion.pathweb (b.cns_fecha_pro)
+                           || b.cns_nomarch
+                               PATH,
+                           b.cns_nomarch,
+                           TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
+                               cns_fecha_emi,
+                           TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
+                               cns_fecha_pro,
+                           b.cns_estado,
+                           '-' cns_usuario,
+                           TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi') cns_fechasys
+                    FROM   general_otro1 b,
+                           untipdoc t,
+                           ops$asy.uncuotab@basy.sidunealin u
+                   WHERE       b.cns_tipodoc = t.key_tip
+                           AND b.cns_adutra = u.cuo_cod(+)
+                           AND u.lst_ope(+) = 'U'
+                           AND t.lst_ope = 'U'
+                           AND SUBSTR (cns_nrotra, 0, 7) =
+                                  SUBSTR (vtramite, 0, 7)
+                           AND TRIM ('0' FROM SUBSTR (cns_nrotra, 9)) =
+                                  TRIM ('0' FROM SUBSTR (vtramite, 9))
+                           AND b.cns_tipodoc = vtipo
+                ORDER BY   b.cns_nrotra, t.dsc_tip;
+        ELSE
+            IF vtipo = '785'
+            THEN
+                OPEN c_resultado FOR
+                      SELECT   b.cns_codconc,
+                               b.cns_adutra || ':' || u.cuo_nam cns_adutra,
+                               b.cns_nrotra,
+                               b.cns_tipodoc,
+                               b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
+                               b.cns_emisor,
+                               pkg_digitalizacion.pathweb (b.cns_fecha_pro)
+                               || b.cns_nomarch
+                                   PATH,
+                               b.cns_nomarch,
+                               TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
+                                   cns_fecha_emi,
+                               TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
+                                   cns_fecha_pro,
+                               b.cns_estado,
+                               '-' cns_usuario,
+                               TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi')
+                                   cns_fechasys
+                        FROM   general_otro1 b,
+                               untipdoc t,
+                               ops$asy.uncuotab@basy.sidunealin u
+                       WHERE       b.cns_tipodoc = t.key_tip
+                               AND b.cns_adutra = u.cuo_cod(+)
+                               AND u.lst_ope(+) = 'U'
+                               AND t.lst_ope = 'U'
+                               AND SUBSTR (cns_nrotra, 0, 7) =
+                                      SUBSTR (vtramite, 0, 7)
+                               AND TRIM ('0' FROM SUBSTR (cns_nrotra, 8)) =
+                                      TRIM ('0' FROM SUBSTR (vtramite, 8))
+                               AND b.cns_tipodoc = vtipo
+                    ORDER BY   b.cns_nrotra, t.dsc_tip;
+            ELSE
+                OPEN c_resultado FOR
+                      SELECT   b.cns_codconc,
+                               b.cns_adutra || ':' || u.cuo_nam cns_adutra,
+                               b.cns_nrotra,
+                               b.cns_tipodoc,
+                               b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
+                               b.cns_emisor,
+                               pkg_digitalizacion.pathweb (b.cns_fecha_pro)
+                               || b.cns_nomarch
+                                   PATH,
+                               b.cns_nomarch,
+                               TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy')
+                                   cns_fecha_emi,
+                               TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy')
+                                   cns_fecha_pro,
+                               b.cns_estado,
+                               '-' cns_usuario,
+                               TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi')
+                                   cns_fechasys
+                        FROM   general_otro1 b,
+                               untipdoc t,
+                               ops$asy.uncuotab@basy.sidunealin u
+                       WHERE       b.cns_tipodoc = t.key_tip
+                               AND b.cns_adutra = u.cuo_cod(+)
+                               AND u.lst_ope(+) = 'U'
+                               AND t.lst_ope = 'U'
+                               AND b.cns_nrotra = vtramite
+                               AND b.cns_tipodoc = vtipo
+                    ORDER BY   b.cns_nrotra, t.dsc_tip;
+            END IF;
         END IF;
     END;
 
