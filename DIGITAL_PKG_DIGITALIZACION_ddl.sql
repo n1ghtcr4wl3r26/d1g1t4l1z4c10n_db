@@ -111,7 +111,7 @@ END;
 
 CREATE OR REPLACE 
 PACKAGE BODY pkg_digitalizacion
-/* Formatted on 3-may.-2017 19:31:37 (QP5 v5.126) */
+/* Formatted on 4-may.-2017 9:54:57 (QP5 v5.126) */
 IS
     -- RECURSIVIDAD
 
@@ -303,10 +303,13 @@ IS
                 res := '';
             ELSE
                 FOR i
-                IN (SELECT   DECODE (a.cns_nrotra1,
-                                     prm_tramite,
-                                     a.cns_nrotra2 || '*' || a.cns_tipodoc2,
-                                     a.cns_nrotra1 || '*' || a.cns_tipodoc1)
+                IN (SELECT   DECODE (
+                                 SUBSTR (a.cns_nrotra1, 0, 7)
+                                 || TRIM ('0' FROM SUBSTR (a.cns_nrotra1, 9)),
+                                 SUBSTR (prm_tramite, 0, 7)
+                                 || TRIM ('0' FROM SUBSTR (prm_tramite, 9)),
+                                 a.cns_nrotra2 || '*' || a.cns_tipodoc2,
+                                 a.cns_nrotra1 || '*' || a.cns_tipodoc1)
                                  relacion
                       FROM   relacion_otro2 a
                      WHERE   a.cns_nrotra1 || '*' || a.cns_tipodoc1 <>
@@ -370,8 +373,13 @@ IS
                 ELSE
                     FOR i
                     IN (SELECT   DECODE (
-                                     a.cns_nrotra1,
-                                     prm_tramite,
+                                     SUBSTR (a.cns_nrotra1, 0, 7)
+                                     || TRIM (
+                                            '0' FROM SUBSTR (a.cns_nrotra1,
+                                                             8)),
+                                     SUBSTR (prm_tramite, 0, 7)
+                                     || TRIM (
+                                            '0' FROM SUBSTR (prm_tramite, 8)),
                                      a.cns_nrotra2 || '*' || a.cns_tipodoc2,
                                      a.cns_nrotra1 || '*' || a.cns_tipodoc1)
                                      relacion
