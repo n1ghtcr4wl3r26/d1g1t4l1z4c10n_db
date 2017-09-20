@@ -10,6 +10,10 @@ IS
                                prm_tabla           IN     VARCHAR2)
         RETURN VARCHAR2;
 
+    PROCEDURE relaciones (prm_tramite         IN     VARCHAR2,
+                          prm_tipodocumento   IN     VARCHAR2,
+                          c_resultado            OUT sys_refcursor);
+
     -- DEVUELVE PARAMETRICAS
 
     PROCEDURE obtener_tipo_doc (prm_lstope    IN     VARCHAR2,
@@ -48,8 +52,133 @@ END;
 
 CREATE OR REPLACE 
 PACKAGE BODY pkg_digitalizacion
-/* Formatted on 11-sep.-2017 17:36:36 (QP5 v5.126) */
+/* Formatted on 20/09/2017 17:48:34 (QP5 v5.126) */
 IS
+    PROCEDURE relaciones (prm_tramite         IN     VARCHAR2,
+                          prm_tipodocumento   IN     VARCHAR2,
+                          c_resultado            OUT sys_refcursor)
+    IS
+        cont   NUMBER;
+    BEGIN
+        OPEN c_resultado FOR
+            SELECT   c.cns_codconc,
+                     a.cns_adutra2 || ':' || u.cuo_nam cns_adutra,
+                     a.cns_nrotra2 cns_nrotra,
+                     a.cns_tipodoc2 cns_tipodoc,
+                     a.cns_tipodoc2 || ':' || t.dsc_tip dsc_tip,
+                     a.cns_emisor2 cns_emisor,
+                     DECODE (
+                         c.cns_nomarch,
+                         NULL,
+                         '',
+                         pkg_digitalizacion.pathweb (c.cns_fecha_pro)
+                         || c.cns_nomarch)
+                         PATH,
+                     DECODE (c.cns_nomarch,
+                             NULL, 'NO DIGITALIZADO',
+                             c.cns_nomarch)
+                         cns_nomarch,
+                     TO_CHAR (a.cns_fechaemi2, 'dd/mm/yyyy') cns_fecha_emi,
+                     TO_CHAR (c.cns_fecha_pro, 'dd/mm/yyyy') cns_fecha_pro,
+                     c.cns_estado,
+                     '-' cns_usuario,
+                     TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi') cns_fechasys
+              FROM   digital.relacion_otro2 a,
+                     digital.general_otro1 b,
+                     digital.general_otro1 c,
+                     untipdoc t,
+                     ops$asy.uncuotab@basy.sidunealin u
+             WHERE       a.cns_tipodoc2 = t.key_tip
+                     AND a.cns_adutra2 = u.cuo_cod(+)
+                     AND u.lst_ope(+) = 'U'
+                     AND t.lst_ope = 'U'
+                     AND a.cns_nrotra1 || '-' || a.cns_tipodoc1 <>
+                            a.cns_nrotra2 || '-' || a.cns_tipodoc2
+                     AND a.cns_tipodoc1 = b.cns_tipodoc
+                     AND a.cns_adutra1 = b.cns_adutra
+                     AND a.cns_nrotra1 = b.cns_nrotra
+                     AND a.cns_emisor1 = b.cns_emisor
+                     AND a.cns_fechaemi1 = b.cns_fecha_emi
+                     AND b.cns_nomarch =
+                            prm_tramite || '-' || prm_tipodocumento || '.tif'
+                     AND a.cns_tipodoc2 = c.cns_tipodoc(+)
+                     AND a.cns_adutra2 = c.cns_adutra(+)
+                     AND a.cns_nrotra2 = c.cns_nrotra(+)
+                     AND a.cns_emisor2 = c.cns_emisor(+)
+                     AND a.cns_fechaemi2 = c.cns_fecha_emi(+)
+            UNION ALL
+            SELECT   c.cns_codconc,
+                     a.cns_adutra1 || ':' || u.cuo_nam cns_adutra,
+                     a.cns_nrotra1 cns_nrotra,
+                     a.cns_tipodoc1 cns_tipodoc,
+                     a.cns_tipodoc1 || ':' || t.dsc_tip dsc_tip,
+                     a.cns_emisor1 cns_emisor,
+                     DECODE (
+                         c.cns_nomarch,
+                         NULL,
+                         '',
+                         pkg_digitalizacion.pathweb (c.cns_fecha_pro)
+                         || c.cns_nomarch)
+                         PATH,
+                     DECODE (c.cns_nomarch,
+                             NULL, 'NO DIGITALIZADO',
+                             c.cns_nomarch)
+                         cns_nomarch,
+                     TO_CHAR (a.cns_fechaemi1, 'dd/mm/yyyy') cns_fecha_emi,
+                     TO_CHAR (c.cns_fecha_pro, 'dd/mm/yyyy') cns_fecha_pro,
+                     c.cns_estado,
+                     '-' cns_usuario,
+                     TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi') cns_fechasys
+              FROM   digital.relacion_otro2 a,
+                     digital.general_otro1 b,
+                     digital.general_otro1 c,
+                     untipdoc t,
+                     ops$asy.uncuotab@basy.sidunealin u
+             WHERE       a.cns_tipodoc1 = t.key_tip
+                     AND a.cns_adutra1 = u.cuo_cod(+)
+                     AND u.lst_ope(+) = 'U'
+                     AND t.lst_ope = 'U'
+                     AND a.cns_nrotra1 || '-' || a.cns_tipodoc1 <>
+                            a.cns_nrotra2 || '-' || a.cns_tipodoc2
+                     AND a.cns_tipodoc2 = b.cns_tipodoc
+                     AND a.cns_adutra2 = b.cns_adutra
+                     AND a.cns_nrotra2 = b.cns_nrotra
+                     AND a.cns_emisor2 = b.cns_emisor
+                     AND a.cns_fechaemi2 = b.cns_fecha_emi
+                     AND b.cns_nomarch =
+                            prm_tramite || '-' || prm_tipodocumento || '.tif'
+                     AND a.cns_tipodoc1 = c.cns_tipodoc(+)
+                     AND a.cns_adutra1 = c.cns_adutra(+)
+                     AND a.cns_nrotra1 = c.cns_nrotra(+)
+                     AND a.cns_emisor1 = c.cns_emisor(+)
+                     AND a.cns_fechaemi1 = c.cns_fecha_emi(+)
+            UNION ALL
+            SELECT   b.cns_codconc,
+                     b.cns_adutra || ':' || u.cuo_nam cns_adutra,
+                     b.cns_nrotra,
+                     b.cns_tipodoc,
+                     b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
+                     b.cns_emisor,
+                     pkg_digitalizacion.pathweb (b.cns_fecha_pro)
+                     || b.cns_nomarch
+                         PATH,
+                     b.cns_nomarch,
+                     TO_CHAR (b.cns_fecha_emi, 'dd/mm/yyyy') cns_fecha_emi,
+                     TO_CHAR (b.cns_fecha_pro, 'dd/mm/yyyy') cns_fecha_pro,
+                     b.cns_estado,
+                     '-' cns_usuario,
+                     TO_CHAR (SYSDATE, 'dd/mm/yyyy hh24:mi') cns_fechasys
+              FROM   digital.general_otro1 b,
+                     untipdoc t,
+                     ops$asy.uncuotab@basy.sidunealin u
+             WHERE       b.cns_tipodoc = t.key_tip
+                     AND b.cns_adutra = u.cuo_cod(+)
+                     AND u.lst_ope(+) = 'U'
+                     AND t.lst_ope = 'U'
+                     AND b.cns_nomarch =
+                            prm_tramite || '-' || prm_tipodocumento || '.tif';
+    END relaciones;
+
     FUNCTION recorrido2nivel1 (prm_tramite         IN     VARCHAR2,
                                prm_tipodocumento   IN     VARCHAR2,
                                prm_nodos              OUT VARCHAR2,
@@ -65,7 +194,7 @@ IS
         SELECT   COUNT (1)
           INTO   cont
           FROM   (SELECT   a.cns_nrotra2 || '-' || a.cns_tipodoc2
-                           --a.cns_nrotra2 || '-' || a.cns_tipodoc2
+                    --a.cns_nrotra2 || '-' || a.cns_tipodoc2
                     FROM   relacion_otro2 a, general_otro1 b
                    WHERE   a.cns_nrotra1 || '-' || a.cns_tipodoc1 <>
                                a.cns_nrotra2 || '-' || a.cns_tipodoc2
@@ -94,47 +223,59 @@ IS
             res := '';
         ELSE
             FOR i
-            IN (SELECT   decode(c.cns_nomarch, null, a.cns_nrotra2 || '-' || a.cns_tipodoc2,substr(c.cns_nomarch,0,length(c.cns_nomarch)-4) ) relacion
-  FROM   relacion_otro2 a, general_otro1 b, general_otro1 c
- WHERE   a.cns_nrotra1 || '-' || a.cns_tipodoc1 <>
-             a.cns_nrotra2 || '-' || a.cns_tipodoc2
-         AND a.cns_tipodoc1 = b.cns_tipodoc
-         AND a.cns_adutra1 = b.cns_adutra
-         AND a.cns_nrotra1 = b.cns_nrotra
-         AND a.cns_emisor1 = b.cns_emisor
-         AND a.cns_fechaemi1 = b.cns_fecha_emi
-         AND b.cns_nomarch = prm_tramite
+            IN (SELECT   DECODE (
+                             c.cns_nomarch,
+                             NULL,
+                             a.cns_nrotra2 || '-' || a.cns_tipodoc2,
+                             SUBSTR (c.cns_nomarch,
+                                     0,
+                                     LENGTH (c.cns_nomarch) - 4))
+                             relacion
+                  FROM   relacion_otro2 a, general_otro1 b, general_otro1 c
+                 WHERE   a.cns_nrotra1 || '-' || a.cns_tipodoc1 <>
+                             a.cns_nrotra2 || '-' || a.cns_tipodoc2
+                         AND a.cns_tipodoc1 = b.cns_tipodoc
+                         AND a.cns_adutra1 = b.cns_adutra
+                         AND a.cns_nrotra1 = b.cns_nrotra
+                         AND a.cns_emisor1 = b.cns_emisor
+                         AND a.cns_fechaemi1 = b.cns_fecha_emi
+                         AND b.cns_nomarch =
+                                   prm_tramite
                                 || '-'
                                 || prm_tipodocumento
                                 || '.tif'
-
-         AND a.cns_tipodoc2 = c.cns_tipodoc
-         AND a.cns_adutra2 = c.cns_adutra
-         AND a.cns_nrotra2 = c.cns_nrotra
-         AND a.cns_emisor2 = c.cns_emisor
-         AND a.cns_fechaemi2 = c.cns_fecha_emi
-
-UNION ALL
-SELECT   decode(c.cns_nomarch, null, a.cns_nrotra1 || '-' || a.cns_tipodoc1,substr(c.cns_nomarch,0,length(c.cns_nomarch)-4) ) relacion
-  FROM   relacion_otro2 a, general_otro1 b, general_otro1 c
- WHERE   a.cns_nrotra1 || '-' || a.cns_tipodoc1 <>
-             a.cns_nrotra2 || '-' || a.cns_tipodoc2
-         AND a.cns_tipodoc2 = b.cns_tipodoc
-         AND a.cns_adutra2 = b.cns_adutra
-         AND a.cns_nrotra2 = b.cns_nrotra
-         AND a.cns_emisor2 = b.cns_emisor
-         AND a.cns_fechaemi2 = b.cns_fecha_emi
-         AND b.cns_nomarch = prm_tramite
+                         AND a.cns_tipodoc2 = c.cns_tipodoc(+)
+                         AND a.cns_adutra2 = c.cns_adutra(+)
+                         AND a.cns_nrotra2 = c.cns_nrotra(+)
+                         AND a.cns_emisor2 = c.cns_emisor(+)
+                         AND a.cns_fechaemi2 = c.cns_fecha_emi(+)
+                UNION ALL
+                SELECT   DECODE (
+                             c.cns_nomarch,
+                             NULL,
+                             a.cns_nrotra1 || '-' || a.cns_tipodoc1,
+                             SUBSTR (c.cns_nomarch,
+                                     0,
+                                     LENGTH (c.cns_nomarch) - 4))
+                             relacion
+                  FROM   relacion_otro2 a, general_otro1 b, general_otro1 c
+                 WHERE   a.cns_nrotra1 || '-' || a.cns_tipodoc1 <>
+                             a.cns_nrotra2 || '-' || a.cns_tipodoc2
+                         AND a.cns_tipodoc2 = b.cns_tipodoc
+                         AND a.cns_adutra2 = b.cns_adutra
+                         AND a.cns_nrotra2 = b.cns_nrotra
+                         AND a.cns_emisor2 = b.cns_emisor
+                         AND a.cns_fechaemi2 = b.cns_fecha_emi
+                         AND b.cns_nomarch =
+                                   prm_tramite
                                 || '-'
                                 || prm_tipodocumento
                                 || '.tif'
-
-         AND a.cns_tipodoc1 = c.cns_tipodoc
-         AND a.cns_adutra1 = c.cns_adutra
-         AND a.cns_nrotra1 = c.cns_nrotra
-         AND a.cns_emisor1 = c.cns_emisor
-         AND a.cns_fechaemi1 = c.cns_fecha_emi
-            )
+                         AND a.cns_tipodoc1 = c.cns_tipodoc(+)
+                         AND a.cns_adutra1 = c.cns_adutra(+)
+                         AND a.cns_nrotra1 = c.cns_nrotra(+)
+                         AND a.cns_emisor1 = c.cns_emisor(+)
+                         AND a.cns_fechaemi1 = c.cns_fecha_emi(+))
             LOOP
                 res :=
                        res
@@ -297,7 +438,7 @@ SELECT   decode(c.cns_nomarch, null, a.cns_nrotra1 || '-' || a.cns_tipodoc1,subs
             OPEN c_resultado FOR
                   SELECT   b.cns_codconc,
                            b.cns_adutra || ':' || u.cuo_nam cns_adutra,
-                           substr(b.cns_nomarch,0,length(b.cns_nomarch)-8) cns_nrotra,
+                           b.cns_nrotra,
                            b.cns_tipodoc,
                            b.cns_tipodoc || ':' || t.dsc_tip dsc_tip,
                            b.cns_emisor,
